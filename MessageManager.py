@@ -11,7 +11,7 @@ ownteam = 'TC Ballieveldert'
 date_format = '%d/%m'
 time_format = '%A:%H:%M'
 
-matchday_msg_timeoffset_mins_list = [8 * 60, 1 * 60, 5]  # timeoffset in minutes
+matchday_msg_timeoffset_mins_list = [8 * 60, (1 * 60) + 15, 5]  # timeoffset in minutes
 scrim_msg_timeoffset_mins_list = [8 * 60, 5]  # timeoffset in minutes
 
 with open('data/eventinfo.json',
@@ -124,19 +124,21 @@ def create_msg(a_event, important_offset_mins, timeoffset_mins):
     msg = ''
     if a_event['type'] == 'match':
         if timeoffset_mins == important_offset_mins:
-            msg = f"@everyone MATCHDAY - Today we're playing {opponent} (ranked {opponent_ranking}) on {map1_name}, {map2_name} & {map3_name} at 8pm BST"
+            msg = f"@everyone MATCHDAY - Today we're playing {opponent} (ranked {opponent_ranking}) on {map1_name}, {map2_name} & {map3_name} at 8pm BST" \
+                  f" that's in less than {hours_val} hours and {mins_val} minutes." \
+                  f" Lets beat those {random.choice(insult_firstword)} {random.choice(insult_secondword)} {random.choice(insult_thirdword)}!!" \
+                  f" Please be on at 7pm BST for scrims." \
+                  f"\nWe're currently in {week.lower()} out of 7 weeks of the regular season and are ranked {own_ranking}."
         else:
-            msg = f" MATCHDAY - Today we're playing {opponent} (ranked {opponent_ranking}) on {map1_name}, {map2_name} & {map3_name} at 8pm BST"
+            msg = f" MATCHDAY REMINDER - Today we're playing {opponent} (ranked {opponent_ranking}) on {map1_name}, {map2_name} & {map3_name} at 8pm BST" \
+                  f" that's in less than {hours_val} hours and {mins_val} minutes." \
+                  f" Please be on at 7pm BST for scrims."
 
-        msg += f" that's in less than {hours_val} hours and {mins_val} minutes." \
-               f" Lets beat those {random.choice(insult_firstword)} {random.choice(insult_secondword)} {random.choice(insult_thirdword)}!!" \
-               f" Please be on at 7pm BST for scrims." \
-               f"\nWe're currently in {week.lower()} out of 7 weeks of the regular season and are ranked {own_ranking}."
     elif a_event['type'] == 'scrim':
         msg = f"PRACTICE - Playing {opponent} on {map1_name}, {map2_name} & {map3_name} this week" \
               f" Please be on at 8pm BST for practice." \
               f" that's in less than {hours_val} hours and {mins_val} minutes."
-    if len(msg) > 0:
+    if len(msg) > 0 and (a_event['type'] == 'scrim' or timeoffset_mins == important_offset_mins):
         msg += f"\n{map1_name}: {map1_link}," \
                f" {map2_name}: {map2_link}," \
                f" {map3_name}: {map3_link}"
@@ -144,11 +146,13 @@ def create_msg(a_event, important_offset_mins, timeoffset_mins):
         print(f'message empty, event: {a_event}')
     return msg
 
+
 def get_message():
     current_time = datetime.strftime(datetime.utcnow(), time_format)
     current_date = datetime.strftime(datetime.utcnow(), date_format)
 
-    current_time_mins = int(current_time.split(':')[1]) * 60 + int(current_time.split(':')[2])  # time_format = '%A:%H:%M'
+    current_time_mins = int(current_time.split(':')[1]) * 60 + int(
+        current_time.split(':')[2])  # time_format = '%A:%H:%M'
     for event in event_datetime_list:
         if event['date'] == current_date:
             if event['type'] == 'match':
