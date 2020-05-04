@@ -11,6 +11,9 @@ ownteam = 'TC Ballieveldert'
 date_format = '%d/%m'
 time_format = '%A:%H:%M'
 
+matchday_msg_timeoffset_mins_list = [8 * 60, 1 * 60, 5]  # timeoffset in minutes
+scrim_msg_timeoffset_mins_list = [8 * 60, 5]  # timeoffset in minutes
+
 with open('data/eventinfo.json',
           'r') as infile:  # if the general sheet fixture is updated/made for the first time run update_fixtures_csv
     event_datetime_list = json.load(infile)
@@ -134,24 +137,14 @@ def create_msg(a_event, important_offset_mins, timeoffset_mins):
               f" Please be on at 8pm BST for practice." \
               f" that's in less than {hours_val} hours and {mins_val} minutes."
     if len(msg) > 0:
-        msg += f"\n{map1_name}: {map1_link}" \
-               f" {map2_name}: {map2_link}" \
+        msg += f"\n{map1_name}: {map1_link}," \
+               f" {map2_name}: {map2_link}," \
                f" {map3_name}: {map3_link}"
-
+    else:
+        print(f'message empty, event: {a_event}')
     return msg
 
-
-def is_message_event_time():
-    current_date = datetime.strftime(datetime.utcnow(), date_format)
-    for event in event_datetime_list:
-        if current_date == event['date']:
-            return True
-    return False
-
-
 def get_message():
-    matchday_msg_timeoffset_mins_list = [8 * 60, 1 * 60, 5]  # timeoffset in minutes
-    scrim_msg_timeoffset_mins_list = [8 * 60, 5]  # timeoffset in minutes
     current_time = datetime.strftime(datetime.utcnow(), time_format)
     current_date = datetime.strftime(datetime.utcnow(), date_format)
 
@@ -170,3 +163,4 @@ def get_message():
                         event['time'].split(':')[2]) - timeoffset_mins
                     if current_time_mins == event_msg_time_mins:
                         return create_msg(event, -1, timeoffset_mins)
+    return ''
