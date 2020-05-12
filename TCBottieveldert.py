@@ -15,7 +15,7 @@ parser.add_argument('-c', '--channel', type=int, nargs='?', default=0,
 args = parser.parse_args()
 
 TOKEN = TOKEN if args.token == '' else args.token
-CHANNEL = BOTTEST_CHANNEL if args.channel == 0 else args.channel
+CHANNEL = GENERAL_CHANNEL if args.channel == 0 else args.channel
 
 client = discord.Client()
 
