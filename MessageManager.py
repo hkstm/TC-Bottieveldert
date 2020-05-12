@@ -1,5 +1,5 @@
 import requests
-import json
+import jsonpickle
 import random
 import pytz
 from datetime import datetime, timedelta
@@ -14,9 +14,7 @@ time_format = '%A:%H:%M'
 matchday_msg_timeoffset_mins_list = [8 * 60, (1 * 60) + 15, 5]  # timeoffset in minutes
 scrim_msg_timeoffset_mins_list = [8 * 60, 5]  # timeoffset in minutes
 
-with open('data/eventinfo.json',
-          'r') as infile:  # if the general sheet fixture is updated/made for the first time run update_fixtures_csv
-    event_datetime_list = json.load(infile)
+scrim_offset = -5
 
 
 def is_dst(tz):
@@ -24,10 +22,9 @@ def is_dst(tz):
     return now.astimezone(tz).dst() != timedelta(0)
 
 
-def conv_eventinfo_to_dict(date_time, type, date_format=date_format, time_format=time_format):
+def conv_eventinfo_to_dict(datetime, type):
     return {
-        'date': date_time.strftime(date_format),
-        'time': date_time.strftime(time_format),
+        'datetime': datetime,
         'type': type,
     }
 
@@ -38,18 +35,28 @@ def make_event_list():
     ws_dataonly = load_workbook(filename='data/minorsfixtures.xlsx', data_only=True)['Minors Fixtures']
 
     event_datetime_list = []
+    event_datetime_list.extend([conv_eventinfo_to_dict(datetime(year=2020, month=5, day=12,
+                                                               hour=(19 if is_dst(eltp_tz) else 20), minute=0,
+                                                               tzinfo=pytz.utc), 'match')])  # fo)
     for row_idx, row in enumerate(ws_dataonly.rows):  # go through all the rows of the fixtures tab
         if isinstance(row[0].value,
                       datetime):  # find the row that matches the current date, e.g. day on which map is played
             match_datetime = datetime(year=row[0].value.year, month=row[0].value.month, day=row[0].value.day,
                                       hour=(19 if is_dst(eltp_tz) else 20), minute=0,
                                       tzinfo=pytz.utc)  # for calculations it is recommended to store times in utc, so we have to correct for that wrt actual game times
-            scrim_datetime = match_datetime - timedelta(days=5)  # scrims 5 days before actual game e.g. Wednesdays
-            event_datetime_list.extend(
-                [conv_eventinfo_to_dict(match_datetime, 'match'), conv_eventinfo_to_dict(scrim_datetime,
-                                                                                         'scrim')])
-    with open('data/eventinfo.json', 'w') as outfile:
-        json.dump(event_datetime_list, outfile)
+            scrim_datetime = match_datetime + timedelta(days=scrim_offset)  # scrims 5 days before actual game e.g. Wednesdays
+            event_datetime_list.extend([conv_eventinfo_to_dict(match_datetime, 'match'),
+                                        conv_eventinfo_to_dict(scrim_datetime, 'scrim')])
+    with open('data/eventinfo.json', 'wb') as outfile:
+        outfile.write(jsonpickle.encode(event_datetime_list).encode("utf-8"))
+
+
+make_event_list()
+
+# event_datetime_list = None
+with open('data/eventinfo.json',
+          'rb') as infile:  # if the general sheet fixture is updated/made for the first time run update_fixtures_csv
+    event_datetime_list = jsonpickle.decode(infile.read().decode("utf-8"))
 
 
 def update_fixtures_csv():
@@ -80,7 +87,9 @@ def ranking_to_placement(ranking):
 
 
 def create_msg(a_event, important_offset_mins, timeoffset_mins):
-    current_date = a_event['date']
+    current_date = datetime.strftime(
+        (a_event['datetime'] if a_event['type'] == 'match' else a_event['datetime'] + timedelta(days=-scrim_offset)),
+        date_format)
     ws_fixt = load_workbook(filename='data/minorsfixtures.xlsx', data_only=False)['Minors Fixtures']
     ws_fixt_dataonly = load_workbook(filename='data/minorsfixtures.xlsx', data_only=True)['Minors Fixtures']
 
@@ -154,17 +163,20 @@ def get_message():
     current_time_mins = int(current_time.split(':')[1]) * 60 + int(
         current_time.split(':')[2])  # time_format = '%A:%H:%M'
     for event in event_datetime_list:
-        if event['date'] == current_date:
+        event_time = datetime.strftime(event['datetime'], time_format)
+        event_date = datetime.strftime(event['datetime'], date_format)
+
+        if event_date == current_date:
             if event['type'] == 'match':
                 for timeoffset_mins in matchday_msg_timeoffset_mins_list:
-                    event_msg_time_mins = int(event['time'].split(':')[1]) * 60 + int(
-                        event['time'].split(':')[2]) - timeoffset_mins
+                    event_msg_time_mins = int(event_time.split(':')[1]) * 60 + int(
+                        event_time.split(':')[2]) - timeoffset_mins
                     if current_time_mins == event_msg_time_mins:
                         return create_msg(event, matchday_msg_timeoffset_mins_list[0], timeoffset_mins)
             elif event['type'] == 'scrim':
                 for timeoffset_mins in scrim_msg_timeoffset_mins_list:
-                    event_msg_time_mins = int(event['time'].split(':')[1]) * 60 + int(
-                        event['time'].split(':')[2]) - timeoffset_mins
+                    event_msg_time_mins = int(event_time.split(':')[1]) * 60 + int(
+                        event_time.split(':')[2]) - timeoffset_mins
                     if current_time_mins == event_msg_time_mins:
                         return create_msg(event, -1, timeoffset_mins)
     return ''
