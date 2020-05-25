@@ -5,7 +5,7 @@ import MessageManager
 from pathlib import Path
 credentials_path = Path('Credentials.py')
 if credentials_path.is_file():
-    from Credentials import TOKEN, GENERAL_CHANNEL, BOTTEST_CHANNEL
+    from Credentials import TOKEN, GENERAL_CHANNEL, BOTTEST_CHANNEL, TY_ID
 
 parser = argparse.ArgumentParser(description='Process some integers.')
 parser.add_argument('-t', '--token', type=str, nargs='?', default='',
@@ -28,6 +28,10 @@ async def time_check():
             channel = client.get_channel(CHANNEL)
             try:
                 await channel.send(msg)
+                if TY_ID == -1:
+                    user_ty = client.get_user(TY_ID)  # spam if u want
+                    channel_ty = await user_ty.create_dm()
+                    await channel_ty.send(f'Hey sunshine!! I have a special message from TCB right to your own personal safespace!!!: {msg}')
             except discord.errors.HTTPException:
                 print(f'HTTPException, message: {msg}')
             time = (5 * 60)  # check every minute if a message should be send, this to allow time offset in get_message to function
